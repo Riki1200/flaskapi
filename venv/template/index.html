@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YoutubeAPI</title>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            scroll-behavior: smooth;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .container {
+            display: flex;
+            justify-content: center ;
+            flex-direction: column;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 30px;
+        } 
+        .nav{
+            padding: 10px 30px;
+            flex-basis: 100%;
+            width: 100%;
+            text-align: center;
+            background-color: brown;
+            color: #fff;
+            font-size: 2rem;
+        }
+
+        .form_article {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .results {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+        .results .card{ 
+            display: flex;
+            flex-direction: column;
+            word-wrap: break-word;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+ 
+ <main class="container">
+    <nav class="nav">
+        <div class="title">
+            <h2>YoutubeAPI</h2>
+        </div>
+    </nav>
+
+    <section class="section">
+
+        <article class="form_article">
+
+            <form class="form" id="form">
+                <div class="form_fields">
+                    <label>
+                        Search: <input type="text" name="saerch" id="search">
+                    </label>
+                </div>
+                <div class="form_fields">
+                    <label>
+                        Select: <select name="type" id="type">
+                            <option value="songs">Songs</option>
+
+                        </select>
+                    </label>
+                </div>
+                <button type="submit">Submit</button>
+            </form>
+        </article>
+        <article class="results">
+            <div class="btn_content">
+               <button data-btn="">More data</button>
+            </div>
+        </article>
+    </section>
+
+
+ </main>   
+ {% block script %}
+<script type="text/javascript">
+
+( async () => {
+
+    let form = document.querySelector('#form');
+    let results = document.querySelector('.results')
+
+
+
+    form.addEventListener('submit', HandleSubmit)
+
+
+
+    function HandleSubmit(evt){
+        evt.preventDefault();
+
+
+
+        let formData = new FormData(this);
+
+        let typeValue = formData.get('type');
+        let searchValue = formData.get('saerch')
+
+        
+        let values = {
+            type: typeValue,
+            search: searchValue
+        }
+        queryValues(values)
+
+        evt.target.search.value = "";
+    }
+    form.removeEventListener('submit', () => {
+        console.log('na')
+    })
+
+
+
+    function queryValues({type,search}){
+        
+        if(type !== "" && search !== ""){
+            let basenameAPI = `http://localhost:5000/${type !== "" ? type : "songs"}?name=${search}`;
+
+            callAPIFlask(basenameAPI).then((res) => {
+                RenderDOM('.results', res)
+            }).catch(console.error)
+
+
+
+
+        }
+
+    }
+
+
+    async function callAPIFlask(url = "") {
+        return new Promise( async (resolve, reject) => {
+            try {
+                let fetchFlaskData = await fetch(url, {
+                method: "GET",
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                    },
+                    mode: "no-cors"
+                })
+                resolve(await fetchFlaskData.json())  
+            } catch (error) {
+                reject(error)
+            }
+            
+
+        })
+      
+    }
+
+
+    function RenderDOM(element,flaskData){
+
+        
+        console.log(flaskData);
+        let btnContent = document.querySelector('.btn_content');
+        let fragment = document.createDocumentFragment();
+        
+        
+        let fragmentElement = document.createDocumentFragment();
+
+        let notRepeat = new Set(flaskData[0].items)
+
+        console.log()
+
+        for(let item of [...notRepeat]){
+            
+            let divItem = document.createElement('div');
+        
+                divItem.className = "card"
+
+
+                   divItem.innerHTML = `
+                        <h3>${item.id} - ${item.name}</h3>
+                        <img src=${item.thumbnail.url.replace('=w544-h544-l90-rj', '')}>
+                    `; 
+                   fragmentElement.appendChild(divItem)
+                   
+        }
+
+        document.querySelector(element).append(fragmentElement)
+
+        let buttonNext = document.querySelector('[data-btn]');
+        
+       
+
+
+        buttonNext.addEventListener('click', async (evt) => {
+            evt.preventDefault();
+
+            console.log(flaskData[1]['type'])
+
+            let keyNew = flaskData[0]['continuation']
+            console.log('old key =',keyNew)
+            let r = await callAPIFlask(`http://localhost:5000/nextsongs?key=${keyNew}`);
+
+            
+            notRepeat = new Set(r.items)
+            for(let item of [...notRepeat]){
+            
+            let divItem = document.createElement('div');
+        
+                divItem.className = "card"
+
+
+                   divItem.innerHTML = `
+                        <h3>${item.id} - ${item.name}</h3>
+                        <img src="${item.thumbnail.url}" alt="${item.name}"/>
+                    `; 
+                   fragmentElement.appendChild(divItem)
+                   
+        }
+
+        document.querySelector(element).append(fragmentElement)
+
+            console.log(r)
+
+        })
+
+
+
+       
+        
+
+        //document.querySelector(element).append(fragment);
+       
+    }
+
+    
+
+    /**
+     *@param {Element} tagType 
+    */
+
+
+    function CreateElement(tagType){
+        let documentNew = document.createElement(tagType)
+        return documentNew;
+    }
+
+    
+
+
+
+})()
+
+
+</script>
+{% endblock %}
+</body>
+</html>
